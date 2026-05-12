@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  Image, StatusBar, useWindowDimensions, ScrollView,
+  Image, StatusBar, useWindowDimensions, ScrollView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -109,9 +109,10 @@ export default function ShakeScreen() {
     setTimeout(() => reveal(picked), 750);
   }, [reveal]);
 
-  // Accelerometer — active only while tab is focused
+  // Accelerometer — active only while tab is focused, native only
   useFocusEffect(
     useCallback(() => {
+      if (Platform.OS === 'web') return;
       Accelerometer.setUpdateInterval(80);
       const sub = Accelerometer.addListener(({ x, y, z }) => {
         if (Math.sqrt(x * x + y * y + z * z) > SHAKE_THRESHOLD) handleShake();
@@ -148,7 +149,11 @@ export default function ShakeScreen() {
         </Animated.View>
 
         {!pokemon && (
-          <Text style={styles.hint}>Shake your phone or tap the button{'\n'}to discover a random Pokémon</Text>
+          <Text style={styles.hint}>
+            {Platform.OS === 'web'
+              ? 'Tap the button to discover a random Pokémon'
+              : 'Shake your phone or tap the button\nto discover a random Pokémon'}
+          </Text>
         )}
 
         {pokemon && (
@@ -203,6 +208,7 @@ const styles = StyleSheet.create({
     width: '100%', borderRadius: 22, padding: 20, alignItems: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25, shadowRadius: 10, elevation: 8,
+    boxShadow: '0px 6px 10px rgba(0,0,0,0.25)',
   },
   cardNum: { alignSelf: 'flex-end', color: 'rgba(0,0,0,0.25)', fontWeight: '700', fontSize: 12 },
   sprite: { width: 120, height: 120 },
@@ -226,6 +232,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 36, paddingVertical: 14,
     shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2, shadowRadius: 6, elevation: 4,
+    boxShadow: '0px 3px 6px rgba(0,0,0,0.2)',
   },
   shakeBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
 });

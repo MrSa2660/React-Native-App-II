@@ -107,6 +107,7 @@ const styles = StyleSheet.create({
     flex: 1, margin: 6, borderRadius: 16, padding: 10, alignItems: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.18, shadowRadius: 4, elevation: 3,
+    boxShadow: '0px 2px 4px rgba(0,0,0,0.18)',
   },
   cardNum: { alignSelf: 'flex-end', fontSize: 11, fontWeight: '700', color: 'rgba(0,0,0,0.28)' },
   sprite: { width: 90, height: 90, marginVertical: 4 },

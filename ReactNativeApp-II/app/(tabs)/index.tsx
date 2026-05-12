@@ -126,6 +126,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.18,
     shadowRadius: 4,
     elevation: 3,
+    boxShadow: '0px 2px 4px rgba(0,0,0,0.18)',
   },
   cardNum: {
     alignSelf: 'flex-end',
