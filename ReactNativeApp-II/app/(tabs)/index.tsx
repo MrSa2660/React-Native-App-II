@@ -1,98 +1,147 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import {
+  FlatList,
+  StyleSheet,
+  TextInput,
+  View,
+  TouchableOpacity,
+  Image,
+  Text,
+  StatusBar,
+  useWindowDimensions,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { TYPE_COLORS } from '@/constants/pokemon-types';
+import { GEN1_POKEMON, spriteUrl, type PokemonStub } from '@/constants/gen1-pokemon';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+function pad(n: number) {
+  return `#${String(n).padStart(3, '0')}`;
+}
 
-export default function HomeScreen() {
+function cap(s: string) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+export default function PokedexScreen() {
+  const router = useRouter();
+  const { width, height } = useWindowDimensions();
+  const numCols = width > height ? 3 : 2; // 3 columns in landscape
+  const [search, setSearch] = useState('');
+
+  const filtered = search.trim()
+    ? GEN1_POKEMON.filter(
+        (p) =>
+          p.name.toLowerCase().includes(search.toLowerCase().trim()) ||
+          pad(p.id).includes(search.trim())
+      )
+    : GEN1_POKEMON;
+
+  const renderItem = useCallback(
+    ({ item }: { item: PokemonStub }) => {
+      const bgColor = TYPE_COLORS[item.types[0]] ?? '#A8A878';
+      return (
+        <TouchableOpacity
+          style={[styles.card, { backgroundColor: bgColor }]}
+          onPress={() => router.push(`/pokemon/${item.id}`)}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.cardNum}>{pad(item.id)}</Text>
+          <Image
+            source={{ uri: spriteUrl(item.id) }}
+            style={styles.sprite}
+            resizeMode="contain"
+          />
+          <Text style={styles.cardName}>{cap(item.name)}</Text>
+          <View style={styles.typeRow}>
+            {item.types.map((t) => (
+              <View key={t} style={styles.badge}>
+                <Text style={styles.badgeText}>{cap(t)}</Text>
+              </View>
+            ))}
+          </View>
+        </TouchableOpacity>
+      );
+    },
+    [router]
+  );
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+    <SafeAreaView style={styles.root} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor="#EE1515" />
+      <View style={styles.header}>
+        <Text style={styles.title}>Pokédex</Text>
+        <TextInput
+          style={styles.search}
+          placeholder="Search name or #..."
+          placeholderTextColor="rgba(255,255,255,0.65)"
+          value={search}
+          onChangeText={setSearch}
+          returnKeyType="search"
+          clearButtonMode="while-editing"
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
-
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      </View>
+      <FlatList
+        key={String(numCols)}
+        data={filtered}
+        renderItem={renderItem}
+        keyExtractor={(p) => String(p.id)}
+        numColumns={numCols}
+        contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <Text style={styles.empty}>No Pokémon found for "{search}"</Text>
+        }
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
+  root: { flex: 1, backgroundColor: '#f2f2f2' },
+  header: {
+    backgroundColor: '#EE1515',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
+  title: { fontSize: 32, fontWeight: 'bold', color: '#fff', marginBottom: 10 },
+  search: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: '#fff',
+  },
+  list: { padding: 8, paddingBottom: 32 },
+  card: {
+    flex: 1,
+    margin: 6,
+    borderRadius: 16,
+    padding: 10,
     alignItems: 'center',
-    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  cardNum: {
+    alignSelf: 'flex-end',
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(0,0,0,0.28)',
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  sprite: { width: 90, height: 90, marginVertical: 4 },
+  cardName: { fontSize: 13, fontWeight: 'bold', color: '#fff', textAlign: 'center' },
+  typeRow: { flexDirection: 'row', gap: 4, marginTop: 5 },
+  badge: {
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
   },
+  badgeText: { fontSize: 10, color: '#fff', fontWeight: '700' },
+  empty: { textAlign: 'center', color: '#999', marginTop: 40, fontSize: 15 },
 });
