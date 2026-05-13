@@ -8,12 +8,14 @@ import {
   Image,
   Text,
   StatusBar,
+  ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TYPE_COLORS } from '@/constants/pokemon-types';
-import { GEN1_POKEMON, spriteUrl, type PokemonStub } from '@/constants/gen1-pokemon';
+import { spriteUrl, type PokemonStub } from '@/api/pokemon';
+import { usePokedex } from '@/hooks/use-pokedex';
 
 function pad(n: number) {
   return `#${String(n).padStart(3, '0')}`;
@@ -26,16 +28,18 @@ function cap(s: string) {
 export default function PokedexScreen() {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
-  const numCols = width > height ? 3 : 2; // 3 columns in landscape
+  const numCols = width > height ? 3 : 2;
   const [search, setSearch] = useState('');
 
+  const { pokemon, loading, error } = usePokedex(151);
+
   const filtered = search.trim()
-    ? GEN1_POKEMON.filter(
+    ? pokemon.filter(
         (p) =>
           p.name.toLowerCase().includes(search.toLowerCase().trim()) ||
           pad(p.id).includes(search.trim())
       )
-    : GEN1_POKEMON;
+    : pokemon;
 
   const renderItem = useCallback(
     ({ item }: { item: PokemonStub }) => {
@@ -81,18 +85,30 @@ export default function PokedexScreen() {
           clearButtonMode="while-editing"
         />
       </View>
-      <FlatList
-        key={String(numCols)}
-        data={filtered}
-        renderItem={renderItem}
-        keyExtractor={(p) => String(p.id)}
-        numColumns={numCols}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <Text style={styles.empty}>No Pokémon found for "{search}"</Text>
-        }
-      />
+
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#EE1515" />
+          <Text style={styles.loadingText}>Loading Pokédex…</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.center}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      ) : (
+        <FlatList
+          key={String(numCols)}
+          data={filtered}
+          renderItem={renderItem}
+          keyExtractor={(p) => String(p.id)}
+          numColumns={numCols}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <Text style={styles.empty}>No Pokémon found for "{search}"</Text>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -114,6 +130,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#fff',
   },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
+  loadingText: { color: '#666', fontSize: 15 },
+  errorText: { color: '#c0392b', fontSize: 15, textAlign: 'center', paddingHorizontal: 24 },
   list: { padding: 8, paddingBottom: 32 },
   card: {
     flex: 1,

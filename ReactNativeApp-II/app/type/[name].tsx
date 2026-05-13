@@ -1,30 +1,23 @@
-import React, { useMemo } from 'react';
-import { View, Text, FlatList, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import React from 'react';
+import { View, Text, FlatList, StyleSheet, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TYPE_COLORS } from '@/constants/pokemon-types';
-import { GEN1_POKEMON, spriteUrl } from '@/constants/gen1-pokemon';
+import { spriteUrl, type PokemonStub } from '@/api/pokemon';
+import { usePokedex } from '@/hooks/use-pokedex';
 
-function cap(s: string) {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
-function pad(n: number) {
-  return `#${String(n).padStart(3, '0')}`;
-}
+function cap(s: string) { return s.charAt(0).toUpperCase() + s.slice(1); }
+function pad(n: number) { return `#${String(n).padStart(3, '0')}`; }
 
 export default function TypeScreen() {
   const { name } = useLocalSearchParams<{ name: string }>();
   const router = useRouter();
+  const { pokemon: all, loading } = usePokedex(151);
 
   const headerColor = TYPE_COLORS[name ?? ''] ?? '#A8A878';
+  const pokemon = all.filter((p) => p.types.includes(name ?? ''));
 
-  const pokemon = useMemo(
-    () => GEN1_POKEMON.filter((p) => p.types.includes(name ?? '')),
-    [name]
-  );
-
-  const renderItem = ({ item }: { item: (typeof GEN1_POKEMON)[0] }) => (
+  const renderItem = ({ item }: { item: PokemonStub }) => (
     <TouchableOpacity
       style={[styles.card, { backgroundColor: headerColor }]}
       onPress={() => router.push(`/pokemon/${item.id}`)}
@@ -45,20 +38,26 @@ export default function TypeScreen() {
             <Text style={styles.backArrow}>←</Text>
           </TouchableOpacity>
           <Text style={styles.title}>{cap(name ?? '')} Type</Text>
-          <Text style={styles.count}>{pokemon.length} Pokémon</Text>
+          <Text style={styles.count}>{loading ? '…' : `${pokemon.length} Pokémon`}</Text>
         </View>
 
-        <FlatList
-          data={pokemon}
-          renderItem={renderItem}
-          keyExtractor={(p) => String(p.id)}
-          numColumns={2}
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <Text style={styles.empty}>No Gen 1 Pokémon of this type.</Text>
-          }
-        />
+        {loading ? (
+          <View style={styles.center}>
+            <ActivityIndicator size="large" color="#fff" />
+          </View>
+        ) : (
+          <FlatList
+            data={pokemon}
+            renderItem={renderItem}
+            keyExtractor={(p) => String(p.id)}
+            numColumns={2}
+            contentContainerStyle={styles.list}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <Text style={styles.empty}>No Pokémon of this type.</Text>
+            }
+          />
+        )}
       </SafeAreaView>
     </>
   );
@@ -66,28 +65,17 @@ export default function TypeScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-  },
+  topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 12 },
   backBtn: { padding: 4, marginRight: 8 },
   backArrow: { fontSize: 26, color: '#fff', fontWeight: 'bold' },
   title: { flex: 1, fontSize: 22, fontWeight: 'bold', color: '#fff' },
   count: { fontSize: 13, color: 'rgba(255,255,255,0.8)' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   list: { padding: 8, paddingBottom: 32, backgroundColor: '#f2f2f2' },
   card: {
-    flex: 1,
-    margin: 6,
-    borderRadius: 16,
-    padding: 10,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 4,
-    elevation: 3,
+    flex: 1, margin: 6, borderRadius: 16, padding: 10, alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18, shadowRadius: 4, elevation: 3,
     boxShadow: '0px 2px 4px rgba(0,0,0,0.18)',
   },
   num: { alignSelf: 'flex-end', fontSize: 11, fontWeight: '700', color: 'rgba(0,0,0,0.28)' },

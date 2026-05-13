@@ -11,8 +11,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Accelerometer } from 'expo-sensors';
 import { useFocusEffect } from 'expo-router';
-import { GEN1_POKEMON, spriteUrl } from '@/constants/gen1-pokemon';
+import { spriteUrl, type PokemonStub } from '@/api/pokemon';
 import { TYPE_COLORS } from '@/constants/pokemon-types';
+import { usePokedex } from '@/hooks/use-pokedex';
 
 const SHAKE_THRESHOLD = 2.5;
 const COOLDOWN_MS = 1800;
@@ -59,7 +60,11 @@ export default function ShakeScreen() {
   const { width } = useWindowDimensions();
   const ballSize = Math.min(width * 0.4, 160);
 
-  const [pokemon, setPokemon] = useState<typeof GEN1_POKEMON[0] | null>(null);
+  const { pokemon: allPokemon } = usePokedex(151);
+  const allPokemonRef = useRef(allPokemon);
+  useEffect(() => { allPokemonRef.current = allPokemon; }, [allPokemon]);
+
+  const [pokemon, setPokemon] = useState<PokemonStub | null>(null);
   const lastShakeRef = useRef(0);
 
   const shakeX = useSharedValue(0);
@@ -77,7 +82,7 @@ export default function ShakeScreen() {
     );
   }, []);
 
-  const reveal = useCallback((p: typeof GEN1_POKEMON[0]) => {
+  const reveal = useCallback((p: PokemonStub) => {
     setPokemon(p);
     cardOpacity.value = withTiming(1, { duration: 300 });
     cardScale.value = withSpring(1, { mass: 0.8, stiffness: 180 });
@@ -88,7 +93,8 @@ export default function ShakeScreen() {
     if (now - lastShakeRef.current < COOLDOWN_MS) return;
     lastShakeRef.current = now;
 
-    const picked = GEN1_POKEMON[Math.floor(Math.random() * GEN1_POKEMON.length)];
+    if (allPokemonRef.current.length === 0) return;
+    const picked = allPokemonRef.current[Math.floor(Math.random() * allPokemonRef.current.length)];
 
     // Reset card
     cardOpacity.value = 0;

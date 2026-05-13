@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, Text, Image, StyleSheet, ScrollView, TouchableOpacity,
+  View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TYPE_COLORS } from '@/constants/pokemon-types';
-import { GEN1_POKEMON, spriteUrl } from '@/constants/gen1-pokemon';
+import { spriteUrl, type PokemonStub, fetchPokemon } from '@/api/pokemon';
 import { useFavorites } from '@/hooks/use-favorites';
 
 const STAT_COLORS: Record<string, string> = {
@@ -27,10 +27,41 @@ export default function PokemonDetailScreen() {
   const router = useRouter();
   const numId = parseInt(id ?? '1');
 
-  const stub = GEN1_POKEMON.find((p) => p.id === numId);
+  const [stub, setStub] = useState<PokemonStub | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const { isFavorite, toggleFavorite } = useFavorites();
 
-  if (!stub) {
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const data = await fetchPokemon(numId);
+        if (!cancelled) setStub(data);
+      } catch {
+        if (!cancelled) setError(true);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+    return () => { cancelled = true; };
+  }, [numId]);
+
+  if (loading) {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <SafeAreaView style={styles.center} edges={['top']}>
+          <ActivityIndicator size="large" color="#EE1515" />
+        </SafeAreaView>
+      </>
+    );
+  }
+
+  if (error || !stub) {
     return (
       <>
         <Stack.Screen options={{ headerShown: false }} />

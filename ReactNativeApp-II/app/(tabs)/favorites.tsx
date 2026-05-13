@@ -1,12 +1,12 @@
 import React, { useState, useCallback } from 'react';
 import {
   FlatList, StyleSheet, View, Text, TouchableOpacity,
-  Image, StatusBar, useWindowDimensions,
+  Image, StatusBar, ActivityIndicator, useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { GEN1_POKEMON, spriteUrl, type PokemonStub } from '@/constants/gen1-pokemon';
+import { fetchPokemon, spriteUrl, type PokemonStub } from '@/api/pokemon';
 import { TYPE_COLORS } from '@/constants/pokemon-types';
 
 const STORAGE_KEY = '@pokedex_favorites';
@@ -19,22 +19,31 @@ export default function FavoritesScreen() {
   const { width, height } = useWindowDimensions();
   const numCols = width > height ? 3 : 2;
 
-  const [favIds, setFavIds] = useState<Set<number>>(new Set());
+  const [favorites, setFavorites] = useState<PokemonStub[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // Re-read favorites every time the tab is focused
   useFocusEffect(
     useCallback(() => {
-      AsyncStorage.getItem(STORAGE_KEY).then((val) => {
+      let cancelled = false;
+
+      async function load() {
+        setLoading(true);
         try {
-          setFavIds(new Set(val ? (JSON.parse(val) as number[]) : []));
+          const val = await AsyncStorage.getItem(STORAGE_KEY);
+          const ids: number[] = val ? JSON.parse(val) : [];
+          const list = await Promise.all(ids.map((id) => fetchPokemon(id)));
+          if (!cancelled) setFavorites(list);
         } catch {
-          setFavIds(new Set());
+          if (!cancelled) setFavorites([]);
+        } finally {
+          if (!cancelled) setLoading(false);
         }
-      });
+      }
+
+      load();
+      return () => { cancelled = true; };
     }, []),
   );
-
-  const favorites: PokemonStub[] = GEN1_POKEMON.filter((p) => favIds.has(p.id));
 
   const renderItem = useCallback(
     ({ item }: { item: PokemonStub }) => {
@@ -69,7 +78,11 @@ export default function FavoritesScreen() {
         <Text style={styles.subtitle}>{favorites.length} saved</Text>
       </View>
 
-      {favorites.length === 0 ? (
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#EE1515" />
+        </View>
+      ) : favorites.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyIcon}>🤍</Text>
           <Text style={styles.emptyTitle}>No favorites yet</Text>
@@ -98,6 +111,7 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 32, fontWeight: 'bold', color: '#fff' },
   subtitle: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 },
   emptyIcon: { fontSize: 56, marginBottom: 12 },
   emptyTitle: { fontSize: 20, fontWeight: 'bold', color: '#555', marginBottom: 8 },
