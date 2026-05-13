@@ -105,7 +105,7 @@ export default function PokedexScreen() {
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
-            <Text style={styles.empty}>No Pokémon found for "{search}"</Text>
+            <Text style={styles.empty}>No Pokémon found for &quot;{search}&quot;</Text>
           }
         />
       )}
